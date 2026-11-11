@@ -1,0 +1,6 @@
+node_modules
+tests
+k8s
+coverage
+npm-debug.log
+.git

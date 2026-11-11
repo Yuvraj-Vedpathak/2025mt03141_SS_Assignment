@@ -1,0 +1,28 @@
+# Run the Order Service standalone (independent dev/test) - 2025MT03141 / Yuvraj Vijay Vedpathak
+# PAYMENT_SERVICE_URL points at a Payment Service running on the host (port 3003).
+services:
+  order-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: order_user
+      POSTGRES_PASSWORD: order_pass
+      POSTGRES_DB: order_db
+    ports:
+      - "5434:5432"
+
+  order-service:
+    build: .
+    image: order-service:1.0
+    environment:
+      PORT: 3002
+      DB_HOST: order-db
+      DB_USER: order_user
+      DB_PASSWORD: order_pass
+      DB_NAME: order_db
+      PAYMENT_SERVICE_URL: http://host.docker.internal:3003
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "3002:3002"
+    depends_on:
+      - order-db

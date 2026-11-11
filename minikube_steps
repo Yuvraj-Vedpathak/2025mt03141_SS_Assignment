@@ -1,0 +1,98 @@
+FoodExpress - Minikube on a remote server
+2025MT03141 / Yuvraj Vijay Vedpathak
+==========================================================
+
+Project: 2025MT03141_FoodExpress/  (copy it, or the 2025MT03141_FoodExpress.zip, to the server)
+
+
+1. PREREQUISITES ON THE SERVER
+----------------------------------------------------------
+# Docker access for your user (this was the blocker before)
+sudo usermod -aG docker $USER
+# then log out and log back in, and check:
+docker ps
+
+# Install minikube
+curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+sudo install minikube-linux-amd64 /usr/local/bin/minikube
+minikube version
+
+# kubectl (skip if already installed)
+kubectl version --client
+
+# Resources: the deploy script starts minikube with 2 CPUs and 4 GB of memory,
+# which is enough for the 6 pods.
+
+
+2. DEPLOY
+----------------------------------------------------------
+cd 2025MT03141_FoodExpress
+./deployment/deploy-minikube.sh     # starts minikube, enables dashboard + metrics-server,
+                                    # builds both images with `minikube image build`, applies manifests,
+                                    # waits for all rollouts
+./deployment/smoke-test.sh          # end-to-end calls (run on the server)
+
+# Check
+kubectl -n foodexpress get deployments,pods,svc,hpa -o wide
+
+
+3. REACHING THE SERVICES FROM YOUR LAPTOP (POSTMAN)
+----------------------------------------------------------
+The minikube IP (e.g. 192.168.49.2) is only reachable from inside the server.
+
+Option A - port-forward on the server:
+  kubectl -n foodexpress port-forward --address 0.0.0.0 svc/payment-service 3003:3003 &
+  kubectl -n foodexpress port-forward --address 0.0.0.0 svc/order-service 3002:3002 &
+
+  In Postman set:
+    orderUrl   = http://<server-ip>:3002
+    paymentUrl = http://<server-ip>:3003
+
+Option B - if the server's firewall blocks those ports, start the same
+port-forwards on the server, then open an SSH tunnel from your laptop:
+  ssh -L 3002:localhost:3002 -L 3003:localhost:3003 <user>@<server>
+
+  In Postman set:
+    orderUrl   = http://localhost:3002
+    paymentUrl = http://localhost:3003
+
+Import: postman/2025MT03141_Yuvraj_Vijay_Vedpathak_FoodExpress.postman_collection.json
+
+
+4. OPENING THE KUBERNETES DASHBOARD FROM YOUR LAPTOP
+----------------------------------------------------------
+# On the server (do not let it try to open a browser there):
+minikube dashboard --url
+#   prints: http://127.0.0.1:<port>/api/v1/namespaces/kubernetes-dashboard/services/http:kubernetes-dashboard:/proxy/
+
+# On your laptop:
+ssh -L <port>:localhost:<port> <user>@<server>
+
+# Open the printed URL in your laptop's browser, then choose namespace "foodexpress".
+
+
+5. SCREENSHOTS AND VIDEO
+----------------------------------------------------------
+- Take the 15 screenshots listed in screenshots/README.md and save them in
+  screenshots/ with exactly those filenames.
+- Record the demo following video/README.md and save it as:
+    video/2025MT03141_Yuvraj_Vijay_Vedpathak_FoodExpress_Demo.mp4
+
+Useful during the demo:
+  kubectl -n foodexpress scale deployment/payment-service --replicas=3
+  kubectl -n foodexpress get pods -l app=payment-service
+  kubectl -n foodexpress logs deploy/order-service
+
+
+6. FINAL SUBMISSION
+----------------------------------------------------------
+cd docs && npm i --no-save marked@4 && node build-doc.js && python3 build-docx.py && cd ..
+#   -> regenerates the HTML and DOCX documents with the screenshots embedded
+./make-submission-zip.sh
+#   -> ../2025MT03141_FoodExpress.zip
+
+
+7. CLEANUP (optional)
+----------------------------------------------------------
+./deployment/cleanup.sh        # deletes namespace foodexpress
+minikube stop                  # or: minikube delete

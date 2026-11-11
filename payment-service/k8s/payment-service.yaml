@@ -1,0 +1,96 @@
+# Payment Service - 2025MT03141 / Yuvraj Vijay Vedpathak
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: payment-service-config
+  namespace: foodexpress
+data:
+  PORT: "3003"
+  DB_HOST: payment-db
+  DB_PORT: "5432"
+  # Simulated gateway rules (see src/gateway.js)
+  PAYMENT_LIMIT: "10000"
+  WALLET_BALANCE: "2000"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service
+  namespace: foodexpress
+  labels:
+    app: payment-service
+    tier: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: payment-service
+  template:
+    metadata:
+      labels:
+        app: payment-service
+        tier: backend
+    spec:
+      containers:
+        - name: payment-service
+          image: payment-service:1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3003
+          envFrom:
+            - configMapRef:
+                name: payment-service-config
+          env:
+            - name: DB_USER
+              valueFrom: { secretKeyRef: { name: payment-db-secret, key: POSTGRES_USER } }
+            - name: DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: payment-db-secret, key: POSTGRES_PASSWORD } }
+            - name: DB_NAME
+              valueFrom: { secretKeyRef: { name: payment-db-secret, key: POSTGRES_DB } }
+          readinessProbe:
+            httpGet: { path: /health, port: 3003 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health, port: 3003 }
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 100m, memory: 64Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-service
+  namespace: foodexpress
+  labels:
+    app: payment-service
+spec:
+  type: NodePort
+  selector:
+    app: payment-service
+  ports:
+    - port: 3003
+      targetPort: 3003
+      nodePort: 30003
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: payment-service-hpa
+  namespace: foodexpress
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: payment-service
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

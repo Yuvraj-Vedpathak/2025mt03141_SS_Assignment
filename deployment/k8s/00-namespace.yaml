@@ -1,0 +1,7 @@
+# FoodExpress namespace - 2025MT03141 / Yuvraj Vijay Vedpathak
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: foodexpress
+  labels:
+    app.kubernetes.io/part-of: foodexpress

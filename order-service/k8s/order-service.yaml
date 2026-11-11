@@ -1,0 +1,96 @@
+# Order Service - 2025MT03141 / Yuvraj Vijay Vedpathak
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: order-service-config
+  namespace: foodexpress
+data:
+  PORT: "3002"
+  DB_HOST: order-db
+  DB_PORT: "5432"
+  # Service-to-service call resolved by Kubernetes DNS
+  PAYMENT_SERVICE_URL: http://payment-service:3003
+  PAYMENT_TIMEOUT_MS: "3000"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+  namespace: foodexpress
+  labels:
+    app: order-service
+    tier: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: order-service
+  template:
+    metadata:
+      labels:
+        app: order-service
+        tier: backend
+    spec:
+      containers:
+        - name: order-service
+          image: order-service:1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3002
+          envFrom:
+            - configMapRef:
+                name: order-service-config
+          env:
+            - name: DB_USER
+              valueFrom: { secretKeyRef: { name: order-db-secret, key: POSTGRES_USER } }
+            - name: DB_PASSWORD
+              valueFrom: { secretKeyRef: { name: order-db-secret, key: POSTGRES_PASSWORD } }
+            - name: DB_NAME
+              valueFrom: { secretKeyRef: { name: order-db-secret, key: POSTGRES_DB } }
+          readinessProbe:
+            httpGet: { path: /health, port: 3002 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health, port: 3002 }
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 100m, memory: 64Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+  namespace: foodexpress
+  labels:
+    app: order-service
+spec:
+  type: NodePort
+  selector:
+    app: order-service
+  ports:
+    - port: 3002
+      targetPort: 3002
+      nodePort: 30002
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: order-service-hpa
+  namespace: foodexpress
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: order-service
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

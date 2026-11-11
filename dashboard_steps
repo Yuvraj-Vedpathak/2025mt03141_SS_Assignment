@@ -1,0 +1,78 @@
+FoodExpress - Opening the Kubernetes Dashboard from your laptop
+2025MT03141 / Yuvraj Vijay Vedpathak
+Server: <server>   (minikube runs here)
+==========================================================
+
+
+STEP 1 - ON THE SERVER: check the dashboard is running
+----------------------------------------------------------
+kubectl -n kubernetes-dashboard get pods,svc
+
+Expected:
+  pod/kubernetes-dashboard-...      1/1   Running
+  service/kubernetes-dashboard      ClusterIP   ...   80/TCP
+
+If it isn't there:
+  minikube addons enable dashboard
+  minikube addons enable metrics-server
+
+
+STEP 2 - ON THE SERVER: start the port-forward
+----------------------------------------------------------
+kubectl -n kubernetes-dashboard port-forward --address 0.0.0.0 svc/kubernetes-dashboard 8080:80 &
+
+Expected output:
+  Forwarding from 0.0.0.0:8080 -> 9090
+
+Leave this terminal open. If you close it, the port-forward stops.
+"jobs" (csh) lists what's still running in the background.
+"Address already in use" -> pick another port, e.g. 8081:80.
+
+Find the server's IP (needed if the hostname doesn't resolve on your laptop):
+  hostname -I
+
+
+STEP 3 - ON YOUR LAPTOP: open the dashboard
+----------------------------------------------------------
+Option A - direct (try this first)
+  Open in the browser:
+    http://<server>:8080
+  or, if the name doesn't resolve:
+    http://<server-ip>:8080
+
+Option B - SSH tunnel (if Option A times out because of a firewall)
+  Keep the Step 2 port-forward running on the server, then on your laptop
+  (Windows PowerShell / macOS / Linux terminal):
+    ssh -L 8080:localhost:8080 <user>@<server>
+  Leave that SSH session open, then open in the browser:
+    http://localhost:8080
+
+If a login/token page appears, click "Skip".
+
+
+STEP 4 - IN THE DASHBOARD
+----------------------------------------------------------
+1. Namespace dropdown (top left) -> choose "foodexpress"
+   (the default is "default", which looks empty)
+2. CPU/memory graphs can take 1-2 minutes to appear after metrics-server starts.
+
+
+STEP 5 - SCREENSHOTS (save in screenshots/ with these exact names)
+----------------------------------------------------------
+11  Workloads (overview)                 -> 2025MT03141_Yuvraj_Vijay_Vedpathak_11_dashboard_workloads.png
+12  Workloads -> Deployments              -> 2025MT03141_Yuvraj_Vijay_Vedpathak_12_dashboard_deployments.png
+13  Workloads -> Pods (6 Running)         -> 2025MT03141_Yuvraj_Vijay_Vedpathak_13_dashboard_pods.png
+14  Service -> Services (30002/30003)     -> 2025MT03141_Yuvraj_Vijay_Vedpathak_14_dashboard_services.png
+15  Pods -> a payment-service pod -> Logs  -> 2025MT03141_Yuvraj_Vijay_Vedpathak_15_dashboard_pod_logs.png
+    (Logs icon is at the top right; look for "POST /api/payments" lines)
+
+Also worth showing in the video:
+  Config and Storage -> Config Maps, Secrets, Persistent Volume Claims
+  Workloads -> Replica Sets
+  Horizontal Pod Autoscalers (under Workloads, or search "hpa")
+
+
+STEP 6 - WHEN DONE (on the server)
+----------------------------------------------------------
+jobs                 # find the port-forward job number
+kill %<number>       # stop it

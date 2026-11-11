@@ -1,0 +1,26 @@
+# Run the Payment Service standalone (independent dev/test) - 2025MT03141 / Yuvraj Vijay Vedpathak
+services:
+  payment-db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: payment_user
+      POSTGRES_PASSWORD: payment_pass
+      POSTGRES_DB: payment_db
+    ports:
+      - "5435:5432"
+
+  payment-service:
+    build: .
+    image: payment-service:1.0
+    environment:
+      PORT: 3003
+      DB_HOST: payment-db
+      DB_USER: payment_user
+      DB_PASSWORD: payment_pass
+      DB_NAME: payment_db
+      PAYMENT_LIMIT: 10000
+      WALLET_BALANCE: 2000
+    ports:
+      - "3003:3003"
+    depends_on:
+      - payment-db

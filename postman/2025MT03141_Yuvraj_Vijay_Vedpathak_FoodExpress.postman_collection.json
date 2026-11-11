@@ -1,0 +1,436 @@
+{
+  "info": {
+    "name": "2025MT03141 / Yuvraj Vijay Vedpathak - FoodExpress (Order + Payment)",
+    "description": "Service calls for the FoodExpress Order Service and Payment Service deployed on Minikube. Set orderUrl / paymentUrl to http://<minikube ip>:30002 and :30003 (or the URLs printed by `minikube service ... --url`). Run the folders in order: Order Service first (it stores orderId and paymentId), then Payment Service.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "orderUrl",
+      "value": "http://192.168.49.2:30002"
+    },
+    {
+      "key": "paymentUrl",
+      "value": "http://192.168.49.2:30003"
+    },
+    {
+      "key": "orderId",
+      "value": ""
+    },
+    {
+      "key": "paymentId",
+      "value": ""
+    },
+    {
+      "key": "cancelOrderId",
+      "value": ""
+    },
+    {
+      "key": "manualPaymentId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Order Service",
+      "item": [
+        {
+          "name": "01 Health",
+          "request": {
+            "method": "GET",
+            "url": "{{orderUrl}}/health"
+          }
+        },
+        {
+          "name": "02 Browse menu (query)",
+          "request": {
+            "method": "GET",
+            "url": "{{orderUrl}}/api/orders/menu"
+          }
+        },
+        {
+          "name": "03 Place order (command, calls Payment Service: authorize)",
+          "request": {
+            "method": "POST",
+            "url": "{{orderUrl}}/api/orders",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"cust-2025MT03141\",\n  \"restaurantId\": \"rest-001\",\n  \"deliveryAddress\": \"BITS Pilani WILP, Pune\",\n  \"paymentMethod\": \"UPI\",\n  \"items\": [\n    {\n      \"menuItemId\": \"item-101\",\n      \"quantity\": 2\n    },\n    {\n      \"menuItemId\": \"item-102\",\n      \"quantity\": 4\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('payment authorized', () => pm.expect(pm.response.json().payment.status).to.eql('AUTHORIZED'));",
+                  "pm.collectionVariables.set('orderId', pm.response.json().id);",
+                  "pm.collectionVariables.set('paymentId', pm.response.json().payment.paymentId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "04 Track order (query)",
+          "request": {
+            "method": "GET",
+            "url": "{{orderUrl}}/api/orders/{{orderId}}"
+          }
+        },
+        {
+          "name": "05 Accept order (command, calls Payment Service: capture)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{orderUrl}}/api/orders/{{orderId}}/status",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACCEPTED\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('payment captured', () => pm.expect(pm.response.json().payment.status).to.eql('CAPTURED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 Preparing (command)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{orderUrl}}/api/orders/{{orderId}}/status",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PREPARING\"\n}"
+            }
+          }
+        },
+        {
+          "name": "07 Out for delivery (command)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{orderUrl}}/api/orders/{{orderId}}/status",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"OUT_FOR_DELIVERY\"\n}"
+            }
+          }
+        },
+        {
+          "name": "08 Delivered (command)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{orderUrl}}/api/orders/{{orderId}}/status",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"DELIVERED\"\n}"
+            }
+          }
+        },
+        {
+          "name": "09 Order history by customer (query)",
+          "request": {
+            "method": "GET",
+            "url": "{{orderUrl}}/api/orders?customerId=cust-2025MT03141"
+          }
+        },
+        {
+          "name": "10 Place order to cancel (command)",
+          "request": {
+            "method": "POST",
+            "url": "{{orderUrl}}/api/orders",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"cust-2025MT03141\",\n  \"restaurantId\": \"rest-002\",\n  \"deliveryAddress\": \"BITS Pilani WILP, Pune\",\n  \"paymentMethod\": \"WALLET\",\n  \"items\": [\n    {\n      \"menuItemId\": \"item-201\",\n      \"quantity\": 1\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set('cancelOrderId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11 Cancel order (command, calls Payment Service: refund/void)",
+          "request": {
+            "method": "POST",
+            "url": "{{orderUrl}}/api/orders/{{cancelOrderId}}/cancel",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"changed my mind\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('payment voided', () => pm.expect(pm.response.json().payment.status).to.eql('VOIDED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12 Negative - card declined (402)",
+          "request": {
+            "method": "POST",
+            "url": "{{orderUrl}}/api/orders",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"cust-2025MT03141\",\n  \"restaurantId\": \"rest-001\",\n  \"deliveryAddress\": \"BITS Pilani WILP, Pune\",\n  \"paymentMethod\": \"CARD\",\n  \"items\": [\n    {\n      \"menuItemId\": \"item-103\",\n      \"quantity\": 1\n    }\n  ],\n  \"cardLast4\": \"0000\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('402 Payment Required', () => pm.response.to.have.status(402));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "13 Negative - unavailable item (422)",
+          "request": {
+            "method": "POST",
+            "url": "{{orderUrl}}/api/orders",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"cust-2025MT03141\",\n  \"restaurantId\": \"rest-001\",\n  \"deliveryAddress\": \"BITS Pilani WILP, Pune\",\n  \"paymentMethod\": \"UPI\",\n  \"items\": [\n    {\n      \"menuItemId\": \"item-104\",\n      \"quantity\": 1\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14 Negative - invalid transition (409)",
+          "request": {
+            "method": "PATCH",
+            "url": "{{orderUrl}}/api/orders/{{orderId}}/status",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACCEPTED\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Payment Service",
+      "item": [
+        {
+          "name": "01 Health",
+          "request": {
+            "method": "GET",
+            "url": "{{paymentUrl}}/health"
+          }
+        },
+        {
+          "name": "02 Get payment with ledger (query)",
+          "request": {
+            "method": "GET",
+            "url": "{{paymentUrl}}/api/payments/{{paymentId}}"
+          }
+        },
+        {
+          "name": "03 Payments by customer (query)",
+          "request": {
+            "method": "GET",
+            "url": "{{paymentUrl}}/api/payments?customerId=cust-2025MT03141"
+          }
+        },
+        {
+          "name": "04 Payment of an order (query)",
+          "request": {
+            "method": "GET",
+            "url": "{{paymentUrl}}/api/payments?orderId={{orderId}}"
+          }
+        },
+        {
+          "name": "05 Authorize directly (command)",
+          "request": {
+            "method": "POST",
+            "url": "{{paymentUrl}}/api/payments",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"ord-manual-1\",\n  \"customerId\": \"cust-2025MT03141\",\n  \"amount\": 499,\n  \"currency\": \"INR\",\n  \"method\": \"UPI\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set('manualPaymentId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "06 Authorize again - idempotent (200, same id)",
+          "request": {
+            "method": "POST",
+            "url": "{{paymentUrl}}/api/payments",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"ord-manual-1\",\n  \"customerId\": \"cust-2025MT03141\",\n  \"amount\": 499,\n  \"currency\": \"INR\",\n  \"method\": \"UPI\"\n}"
+            }
+          }
+        },
+        {
+          "name": "07 Capture (command)",
+          "request": {
+            "method": "POST",
+            "url": "{{paymentUrl}}/api/payments/{{manualPaymentId}}/capture"
+          }
+        },
+        {
+          "name": "08 Refund (command)",
+          "request": {
+            "method": "POST",
+            "url": "{{paymentUrl}}/api/payments/{{manualPaymentId}}/refund",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"customer complaint\"\n}"
+            }
+          }
+        },
+        {
+          "name": "09 Negative - wallet balance (402)",
+          "request": {
+            "method": "POST",
+            "url": "{{paymentUrl}}/api/payments",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"ord-manual-2\",\n  \"customerId\": \"cust-2025MT03141\",\n  \"amount\": 2500,\n  \"currency\": \"INR\",\n  \"method\": \"WALLET\"\n}"
+            }
+          }
+        },
+        {
+          "name": "10 Negative - capture after refund (409)",
+          "request": {
+            "method": "POST",
+            "url": "{{paymentUrl}}/api/payments/{{manualPaymentId}}/capture"
+          }
+        }
+      ]
+    }
+  ]
+}

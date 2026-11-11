@@ -1,0 +1,24 @@
+{
+  "name": "payment-service",
+  "version": "1.0.0",
+  "description": "FoodExpress Payment Service - authorizes, captures and refunds order payments (2025MT03141 / Yuvraj Vijay Vedpathak)",
+  "main": "src/server.js",
+  "author": "2025MT03141 / Yuvraj Vijay Vedpathak",
+  "license": "MIT",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "jest --runInBand"
+  },
+  "engines": {
+    "node": ">=16.7"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "pg-mem": "^2.8.1",
+    "supertest": "^6.3.4"
+  }
+}
